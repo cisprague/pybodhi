@@ -166,7 +166,7 @@ class Tree(object):
 
         # set colorbar tick spacing
         cb = ax.collections[0].colorbar
-        cb.set_ticks(np.linspace(0, 3, len(self.response.keys()) + 1)[1::2])
+        cb.set_ticks(np.linspace(0, 3, len(self.response.keys()))[1::2])
 
         # set tick labels
         cb.set_ticklabels(["Failure", "Sucesss", "Running", "Off"])
