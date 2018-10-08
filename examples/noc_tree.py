@@ -1,10 +1,11 @@
+#!/usr/bin/python3
 import rospy
 from uuv_gazebo_ros_plugins_msgs.msg import FloatStamped
 from nav_msgs.msg import Odometry
 import numpy as np
 from pybodhi import Tree, Sequence, Fallback
 
-class Porto(Tree):
+class Targeter(Tree):
 
     def __init__(self, x, y, z):
 
@@ -46,11 +47,16 @@ class Porto(Tree):
         mf = Fallback([self.mission_done, mf])
         Tree.__init__(self, Sequence([s1, s2, sp, ms, me, mf]))
 
-        # initialise conditions
-        self.continue_command_received = False
+        # initialise conditionals
+        self.mission_not_aborted = True
+        self.able_to_descend     = True
+        self.actuator_operational = True
+        self.prop_operational = True
+        self.no_leaks = True
+        self.depth_okay = True
 
         # initialise ros node
-        rospy.init_node('porto')
+        rospy.init_node('porto_bt')
 
         # target waypoints
         self.set_wp(x, y, z)
@@ -75,7 +81,28 @@ class Porto(Tree):
         rospy.spin()
 
     def sync(self, data):
-        pass
+
+        # cartesian position
+        self.position = np.array([
+            data.pose.pose.position.x,
+            data.pose.pose.position.y,
+            data.pose.pose.position.z
+        ], float)
+
+        # quaternion
+        qi = data.pose.pose.orientation.x
+        qj = data.pose.pose.orientation.y
+        qk = data.pose.pose.orientation.z
+        qr = data.pose.pose.orientation.w
+
+        # heading direction
+        self.heading = np.array([
+            1 - 2*(qj**2 + qk**2),
+            2*(qi*qj + qk*qr),
+            2*(qi*qk - qj*qr)
+        ], float)
+
+
 
     def set_wp(self, x, y, z):
         self.wp = np.array([x, y, z], float)
@@ -103,7 +130,7 @@ class Porto(Tree):
         self.lthrust.publish(out)
         self.rthrust.publish(out)
 
-    def go_to_target_waypoint(self, data):
+    def control_target_waypoint(self, data):
 
         # cartesian position
         p = np.array([
@@ -131,7 +158,7 @@ class Porto(Tree):
         # direction to wp
         dp = pr/np.linalg.norm(pr)
 
-        # planar angle between vectors
+        # planar angle between heading and waypoint directions
         a = np.arctan2(
             dh[0]*dp[1] - dh[1]*dp[0],
             dh[0]*dp[0] + dh[1]*dp[1]
@@ -145,6 +172,9 @@ class Porto(Tree):
 
         # full thrust
         self.thrust(1)
+        print(p)
+        if np.linalg.norm(pr) < 1.5:
+            print("Hooooray!")
 
     # safety 1
     def mission_not_aborted(self):
@@ -209,6 +239,9 @@ class Porto(Tree):
     def wait_for_go(self):
         return None
 
+    def wait(self):
+        return None
+
     def calibrate_compass(self):
         return None
 
@@ -259,14 +292,6 @@ class Porto(Tree):
 
     def shutdown_payload(self):
         return None
-
-
-
-
-
-
-
-
 
 if __name__ == "__main__":
 
