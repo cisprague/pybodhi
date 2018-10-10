@@ -52,6 +52,7 @@ class Fallback(Node):
 
             # append leaf response
             else:
+                print(task.__name__, status)
                 self.response[task.__name__] = status
 
             # if failed
@@ -93,6 +94,7 @@ class Sequence(Node):
 
             # append leaf response
             else:
+                print(task.__name__, status)
                 self.response[task.__name__] = status
 
             # if failed
@@ -126,6 +128,7 @@ class Tree(object):
         self.responses = list()
 
     def __call__(self):
+        print("")
 
         # compute tree response
         status = self.node()

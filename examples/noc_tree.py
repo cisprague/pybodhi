@@ -131,12 +131,12 @@ class Targeter(Tree):
         # the starting coordinates
         if self.first == True:
             self.origin = np.copy(self.position)
+            self.origin[2] = 0
 
         self.first = False
 
         # querry the behaviour tree
         self()
-        print(self.response)
 
     def pitch(self, sig): # -1 to 1, up to down
         out = FloatStamped()
@@ -259,14 +259,14 @@ class Targeter(Tree):
 
     def _wait_for_continue(self):
         self.counter += 1
-        if self.counter > 10:
+        if self.counter > 100:
             self.continue_command_received = True
             self.counter = 0
         return 2
 
     def _wait_for_go(self):
         self.counter += 1
-        if self.counter > 10:
+        if self.counter > 100:
             self.go_command_received = True
             self.counter = 0
         return 2
@@ -343,9 +343,10 @@ class Targeter(Tree):
     def _mission_done(self):
         if bool(self._at_surface()) and self._payload_off:
             return 1
+            self.thrust(0)
         else:
-            return
-        return None
+            self.thrust(0)
+            return 0
 
     def _at_surface(self):
         if abs(self.position[2]) < 0.2:
