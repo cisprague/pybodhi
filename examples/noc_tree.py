@@ -84,6 +84,10 @@ class Targeter(Tree):
         self.first = True
         self.counter = 0
 
+        # records
+        self.positions = list()
+        self.headings = list()
+
         # initialise ros node
         rospy.init_node('porto_bt')
 
@@ -127,6 +131,9 @@ class Targeter(Tree):
             2*(qi*qj + qk*qr),
             2*(qi*qk - qj*qr)
         ], float)
+
+        self.positions.append(self.position)
+        self.headings.append(self.heading)
 
         # the starting coordinates
         if self.first == True:
@@ -342,10 +349,10 @@ class Targeter(Tree):
     # mission_finalisation
     def _mission_done(self):
         if bool(self._at_surface()) and self._payload_off:
+            self.thrust(0)
+            rospy.signal_shutdown("This shit works")
             return 1
-            self.thrust(0)
         else:
-            self.thrust(0)
             return 0
 
     def _at_surface(self):
