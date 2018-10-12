@@ -11,6 +11,17 @@ class Node(object):
         # assign actions, conditions, or nodes
         self.tasks = tasks
 
+        # enforce leaves
+        for i in range(len(self.tasks)):
+            if not isinstance(self.tasks[i], Node):
+                self.tasks[i] = Leaf(self.tasks[i])
+
+        # assign nominal ids
+        for i in range(len(self.tasks)):
+            self.tasks[i].id = [i]
+
+
+
         # set all response to 3 (off)
         self.reset()
 
@@ -111,6 +122,18 @@ class Sequence(Node):
 
         # all tasks returned true
         return 1
+
+class Leaf(object):
+
+    def __init__(self, function):
+
+        # bound method
+        self.function = function
+        self.__name__ = function.__name__
+
+    def __call__(self):
+        return self.function()
+
 
 class Tree(object):
 

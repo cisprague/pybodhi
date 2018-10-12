@@ -88,9 +88,6 @@ class Targeter(Tree):
         self.positions = list()
         self.headings = list()
 
-        # initialise ros node
-        rospy.init_node('porto_bt')
-
         # left right
         self.fin0 = rospy.Publisher("/lolo_auv_1/fins/0/input", FloatStamped, queue_size=1) # back horizontal -60 to 60
         self.fin1 = rospy.Publisher("/lolo_auv_1/fins/1/input", FloatStamped, queue_size=1) # back horizontal -60 to 60
@@ -106,7 +103,10 @@ class Targeter(Tree):
         self.lthrust = rospy.Publisher("/lolo_auv_1/thrusters/0/input", FloatStamped, queue_size=1)
         self.rthrust = rospy.Publisher("/lolo_auv_1/thrusters/1/input", FloatStamped, queue_size=1)
 
+    def run(self):
         # stream pose data to controller
+        # initialise ros node
+        rospy.init_node('porto_bt')
         rospy.Subscriber("/lolo_auv_1/pose_gt", Odometry, self.sync)
         rospy.spin()
 
