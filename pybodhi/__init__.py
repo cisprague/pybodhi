@@ -11,19 +11,29 @@ class Node(object):
         # assign actions, conditions, or nodes
         self.tasks = tasks
 
-        # enforce leaves
+        # convert functionals to leaves
         for i in range(len(self.tasks)):
             if not isinstance(self.tasks[i], Node):
                 self.tasks[i] = Leaf(self.tasks[i])
 
-        # assign nominal ids
-        for i in range(len(self.tasks)):
-            self.tasks[i].id = [i]
-
-
+        # assign ids
+        self.id = [0]
+        self._id()
 
         # set all response to 3 (off)
         self.reset()
+
+    def _id(self):
+
+        # insert id into tasks' ids
+        for i in range(len(self.tasks)):
+
+            # set child id
+            self.tasks[i].id = self.id + [i]
+
+            # recursion
+            if isinstance(self.tasks[i], Node):
+                self.tasks[i]._id()
 
     def reset(self):
 
@@ -63,8 +73,8 @@ class Fallback(Node):
 
             # append leaf response
             else:
-                print(task.__name__, status)
                 self.response[task.__name__] = status
+
 
             # if failed
             if status is 0:
@@ -105,7 +115,6 @@ class Sequence(Node):
 
             # append leaf response
             else:
-                print(task.__name__, status)
                 self.response[task.__name__] = status
 
             # if failed
@@ -130,9 +139,17 @@ class Leaf(object):
         # bound method
         self.function = function
         self.__name__ = function.__name__
+        self.id = [0]
 
     def __call__(self):
-        return self.function()
+        status = self.function()
+        self.msg = {
+            'id': self.id,
+            'status': status,
+            'type': type(self).__name__,
+            'children': []
+        }
+        return status
 
 
 class Tree(object):
@@ -151,7 +168,6 @@ class Tree(object):
         self.responses = list()
 
     def __call__(self):
-        print("")
 
         # compute tree response
         status = self.node()
@@ -199,3 +215,11 @@ class Tree(object):
         ax.set_ylabel('Leaves')
 
         plt.show()
+
+if __name__ == "__main__":
+
+    tree = Fallback([lambda: 1, lambda: 1])
+    tree = Sequence([tree, lambda: 1])
+    tree()
+    print(tree.tasks[0].msg)
+    print(type(tree).__name__)

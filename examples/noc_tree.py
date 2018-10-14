@@ -382,3 +382,4 @@ if __name__ == "__main__":
 
     # instantiate behaviour tree
     bt = Targeter(wps)
+    bt.run()
