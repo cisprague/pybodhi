@@ -4,6 +4,8 @@ from uuv_gazebo_ros_plugins_msgs.msg import FloatStamped
 from nav_msgs.msg import Odometry
 import numpy as np
 from pybodhi import Tree, Sequence, Fallback
+from std_msgs.msg import String
+import json
 
 class Targeter(Tree):
 
@@ -103,6 +105,9 @@ class Targeter(Tree):
         self.lthrust = rospy.Publisher("/lolo_auv_1/thrusters/0/input", FloatStamped, queue_size=1)
         self.rthrust = rospy.Publisher("/lolo_auv_1/thrusters/1/input", FloatStamped, queue_size=1)
 
+        # ros msg
+        self.msg = rospy.Publisher("/bt_response", String, queue_size=1)
+
     def run(self):
         # stream pose data to controller
         # initialise ros node
@@ -144,6 +149,9 @@ class Targeter(Tree):
 
         # querry the behaviour tree
         self()
+
+        # publish message
+        self.msg.publish(json.dumps(self.node._status()))
 
     def pitch(self, sig): # -1 to 1, up to down
         out = FloatStamped()
