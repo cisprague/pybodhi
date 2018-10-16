@@ -61,6 +61,10 @@ class Node(object):
             'label': self.__name__
         }
 
+    def _newick(self):
+        return "(" + str([task._newick() for task in reversed(self.tasks)]) + ")" + self.__name__
+
+
 class Leaf(object):
 
     def __init__(self, function):
@@ -83,6 +87,8 @@ class Leaf(object):
         print(self.function.__name__, self.status)
         return self.status
 
+    def _newick(self):
+        return self.function.__name__
 
 class Sequence(Node):
 
@@ -154,8 +160,6 @@ class Tree(object):
 
     def __init__(self, node):
 
-        print(node)
-
         # parent node
         self.node = node
 
@@ -182,6 +186,13 @@ class Tree(object):
         self.status = self.node._status()
 
         return response
+
+    def newick(self):
+
+        newick = self.node._newick().replace("'","").replace("\\", "").replace('"', "").replace("[","").replace("]", "").replace("Fallback", "?").replace("Sequence", "→")
+        newick = "(" + newick + ")Ø;"
+        return newick
+
 
 if __name__ == "__main__":
 
