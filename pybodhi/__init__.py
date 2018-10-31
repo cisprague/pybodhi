@@ -1,156 +1,160 @@
 # Christopher Iliffe Sprague
 # christopher.iliffe.sprague@gmail.com
 
-import seaborn as sb, matplotlib.pyplot as plt, pandas as pd, numpy as np
-from matplotlib.colors import LinearSegmentedColormap
+import numpy as np
 
 class Node(object):
 
-    def __init__(self, tasks):
+    def __init__(self, tasks, name=None):
 
-        # assign actions, conditions, or nodes
-        self.tasks = tasks
+        if name is not None:
+            self.__name__ = name
+        else:
+            self.__name__ = type(self).__name__
 
         # convert functionals to leaves
-        for i in range(len(self.tasks)):
-            if not isinstance(self.tasks[i], Node):
-                self.tasks[i] = Leaf(self.tasks[i])
+        for i in range(len(tasks)):
+            if not isinstance(tasks[i], Node):
+                tasks[i] = Leaf(tasks[i])
+
+        # assign tasks
+        self.tasks = tasks
 
         # assign ids
         self.id = [0]
         self._id()
 
-        # set all response to 3 (off)
-        self.reset()
+        # reset responses
+        self._reset()
 
     def _id(self):
 
-        # insert id into tasks' ids
-        for i in range(len(self.tasks)):
+        # insert parent id
+        i = 0
+        for task in self.tasks:
 
             # set child id
-            self.tasks[i].id = self.id + [i]
+            task.id = self.id + [i]
 
             # recursion
-            if isinstance(self.tasks[i], Node):
-                self.tasks[i]._id()
-
-    def reset(self):
-
-        # extract actions and conditions
-        self.response = dict()
-        for task in self.tasks:
-
-            # retrieve response of subsequent node
             if isinstance(task, Node):
-                self.response.update(task.response)
+                task._id()
+            i += 1
 
-            # update response of leaves
-            else:
-                self.response[task.__name__] = 3
+    def _reset(self):
 
-class Fallback(Node):
+        # set to off
+        self.status = 3
 
-    def __init__(self, tasks):
-
-        # initialise as node
-        Node.__init__(self, tasks)
-
-    def __call__(self):
-
-        # reset response
-        self.reset()
-
-        # loop through tasks
+        # recursion
         for task in self.tasks:
-
-            # compute status
-            status = task()
-
-            # retrieve node response
+            task.status = 3
             if isinstance(task, Node):
-                self.response.update(task.response)
+                task._reset()
 
-            # append leaf response
-            else:
-                self.response[task.__name__] = status
+    def _status(self):
+        return {
+            'id': self.id,
+            'status': ["FAILURE", "SUCCESS", "RUNNING", "None"][self.status],
+            'type': "FB" if isinstance(self, Fallback) else "SEQ",
+            'children': [task._status() for task in self.tasks],
+            'label': self.__name__
+        }
 
+    def _newick(self):
+        return "(" + str([task._newick() for task in self.tasks]).replace("'","").replace("\\", "").replace('"', "").replace("[","").replace("]", "").replace("Fallback", "?").replace("Sequence", "→") + ")" + self.__name__
 
-            # if failed
-            if status is 0:
-                continue
-
-            # if succesful
-            elif status is 1:
-                return 1
-
-            # if running
-            elif status is 2:
-                return 2
-
-        # all tasks returned False
-        return 0
-
-class Sequence(Node):
-
-    def __init__(self, tasks):
-
-        # initialise as node
-        Node.__init__(self, tasks)
-
-    def __call__(self):
-
-        # reset response
-        self.reset()
-
-        # loop through tasks
-        for task in self.tasks:
-
-            # compute status
-            status = task()
-
-            # retrieve node response
-            if isinstance(task, Node):
-                self.response.update(task.response)
-
-            # append leaf response
-            else:
-                self.response[task.__name__] = status
-
-            # if failed
-            if status is 0:
-                return 0
-
-            # if succesful
-            elif status is 1:
-                continue
-
-            # if running
-            elif status is 2:
-                return 2
-
-        # all tasks returned true
-        return 1
 
 class Leaf(object):
 
     def __init__(self, function):
-
-        # bound method
         self.function = function
-        self.__name__ = function.__name__
         self.id = [0]
+        self.status = 3
+
+    def _status(self):
+        return {
+            'id': self.id,
+            'status': ["FAILURE", "SUCCESS", "RUNNING", "None"][self.status],
+            'type': "CON",
+            'children': [],
+            'label': self.function.__name__
+        }
 
     def __call__(self):
-        status = self.function()
-        self.msg = {
-            'id': self.id,
-            'status': status,
-            'type': type(self).__name__,
-            'children': []
-        }
-        return status
 
+        self.status = self.function()
+        print(self.function.__name__, self.status)
+        return self.status
+
+    def _newick(self):
+        return self.function.__name__
+
+class Sequence(Node):
+
+    def __init__(self, tasks, name=None):
+
+        # initialise as node
+        Node.__init__(self, tasks, name)
+
+    def __call__(self):
+
+        # reset responses
+        self._reset()
+
+        # loop through tasks
+        for task in self.tasks:
+
+            # compute status
+            self.status = task()
+
+            # if failed
+            if self.status == 0:
+                return 0
+
+            # if succesful
+            elif self.status == 1:
+                continue
+
+            # if running
+            elif self.status == 2:
+                return 2
+
+        # all tasks succesful
+        return 1
+
+class Fallback(Node):
+
+    def __init__(self, tasks, name=None):
+
+        # initialise as node
+        Node.__init__(self, tasks, name)
+
+    def __call__(self):
+
+        # reset response
+        self._reset()
+
+        # loop through tasks
+        for task in self.tasks:
+
+            # compute status
+            self.status = task()
+
+            # if failed
+            if self.status == 0:
+                continue
+
+            # task succesful
+            elif self.status == 1:
+                return 1
+
+            # task running
+            elif self.status == 2:
+                return 2
+
+        # all tasks failed
+        return 0
 
 class Tree(object):
 
@@ -159,67 +163,42 @@ class Tree(object):
         # parent node
         self.node = node
 
-        # response record
+        # responses
         self.responses = list()
 
     def reset(self):
 
-        # reset response record
+        # responses
         self.responses = list()
+
+        # reset responses
+        self.node._reset()
 
     def __call__(self):
 
+        # reset node
+        self.node._reset()
+
         # compute tree response
-        status = self.node()
-        self.response = self.node.response
+        response = self.node()
 
-        # record response
-        self.responses.append(self.response)
+        # statuses
+        self.status = self.node._status()
 
-        return self.response
+        return response
 
-    def plot(self, ax=None, duplicates=False):
+    def newick(self):
 
-        # create axis if not provided
-        if ax is None:
-            fig, ax = plt.subplots(1)
+        newick = self.node._newick().replace("'","").replace("\\", "").replace('"', "").replace("[","").replace("]", "").replace("Fallback", "?").replace("Sequence", "→")
+        newick = "(" + newick + ")Ø;"
+        return newick
 
-        # function names
-        cols = list(self.response.keys())
-
-        # data frame
-        data = pd.DataFrame(self.responses, columns=cols)
-
-        # remove consecutive duplicates
-        if duplicates is False:
-            data = data[cols].loc[(data[cols].shift() != data[cols]).any(axis=1)]
-
-        # make time sequence horizontally
-        data = data.T
-
-        # colormap
-        cmap = sb.color_palette("Paired", 4)
-
-        # discretise colors for responses
-        cmap = LinearSegmentedColormap.from_list('Custom', cmap, len(cmap))
-
-        # make heatmap
-        ax = sb.heatmap(data, ax=ax, cmap=cmap, linewidth=0.1, cbar_kws=dict(use_gridspec=False, location='top'))
-
-        # set colorbar tick spacing
-        cb = ax.collections[0].colorbar
-        cb.set_ticks(np.linspace(0, 3, len(self.response.keys()))[1::2])
-
-        # set tick labels
-        cb.set_ticklabels(["Failure", "Sucesss", "Running", "Off"])
-        ax.set_ylabel('Leaves')
-
-        plt.show()
 
 if __name__ == "__main__":
 
     tree = Fallback([lambda: 1, lambda: 1])
     tree = Sequence([tree, lambda: 1])
+    tree = Tree(tree)
+    print(tree.node._status())
     tree()
-    print(tree.tasks[0].msg)
-    print(type(tree).__name__)
+    print(tree.node._status())
